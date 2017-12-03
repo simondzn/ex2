@@ -1,0 +1,232 @@
+---
+title: "ex3"
+author: "Simon"
+date: "13 בנובמבר 2017"
+output: html_document
+---
+
+Setting up the datasets, seed and needed libs
+```{r}
+setwd('C:\\Users\\User\\Downloads\\שיטות לניתוח מידע\\Titanic')
+set.seed(7)
+df = read.csv('train.csv', ,na.strings = "")
+test_df = read.csv('test.csv', na.strings = '')
+library(caret)
+library(caretEnsemble)
+```
+
+Remove columns that represents and index and convert some to factorial.
+To treat the cabin feature problem we just using the first letter and making it more general.
+```{r}
+df <- df[,-c(1,4,9)]
+df$Survived<- as.factor(df$Survived)
+df$Pclass<- as.factor(df$Pclass)
+df$Cabin <- substring(df$Cabin, 1, 1)
+df$Cabin <- as.factor(df$Cabin)
+df$Sex <- as.factor(df$Sex)
+df$Embarked <- as.factor(df$Embarked)
+```
+
+Preper the test data 
+```{r}
+test_df$Pclass<- as.factor(test_df$Pclass)
+test_df$Cabin <- as.factor(substring(test_df$Cabin, 1, 1))
+test_df$Sex <- as.factor(test_df$Sex)
+test_df$Embarked <- as.factor(test_df$Embarked)
+ids <- test_df$PassengerId
+test_df <- test_df[,-c(1,3,8)]
+```
+
+Split to test - train
+```{r}
+indices <- sample(1:nrow(df),nrow(df)*0.75)
+train<- df[indices,]
+test<- df[-indices,]
+```
+
+#Frist Model - XGB
+XGB - is a boosting method who uses the gradient descent algorithm for minimizing the training error
+
+Set parameters for the model
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"    
+xgb_grid = expand.grid(.nrounds=c(20, 100, 1000),.max_depth=c(2, 3, 4, 5, 6, 7),.eta=c(0.1,0.3,0.5),.gamma=0.1,.colsample_bytree=0.5,.min_child_weight=0.01,.subsample=0.7)
+
+```
+
+Train the model
+```{r}
+fit.xgb <- train(Survived~., data=train, method="xgbTree", metric="Accuracy", trControl=control,na.action = na.pass, tuneGrid = xgb_grid)
+```
+
+Plot the results
+```{r}
+summary(fit.xgb$results)
+plot(fit.xgb)
+```
+
+Test the model
+```{r}
+pred <- predict(fit.xgb,test, na.action = na.pass)
+table(pred,test$Survived)
+mean(pred==test$Survived)
+```
+
+Train a model for submmision with the best parameters
+```{r}
+xgb_grid = expand.grid(.nrounds=20,.max_depth=4,.eta=0.3,.gamma=0.1,.colsample_bytree=0.5,.min_child_weight=0.01,.subsample=0.7)
+fit.xgb_sub <- train(Survived~., data=df, method="xgbTree", metric="Accuracy", trControl=control,na.action = na.pass, tuneGrid = xgb_grid, savePredictions = TRUE)
+
+```
+
+Preper a file for submmision
+```{r}
+new_pred<- predict(fit.xgb_sub,test_df,na.action = na.pass)
+res <- cbind(PassengerId=ids,Survived=as.character(new_pred))
+write.csv(res,file="xgb_try.csv",row.names = F)
+```
+
+Submission on kaggle
+![Subbmission](Titanic/xgb.png)
+
+
+#Second - Adaboost
+
+Adaboost is a boosting techniqe for weak learners, it gives a weight for each learner and by that the overall output is better then other boosting methods. 
+
+Tarin a model with several params and see the results
+```{r}
+fit.ada <- train(Survived~., data=df, method="adaboost",tuneGrid=expand.grid(.nIter=c(10L, 20L, 100L),.method="Adaboost.M1"),  metric=metric, trControl=control, na.action = na.pass)
+plot(fit.ada)
+fit.ada$results
+```
+
+Train a model with best params
+```{r}
+fit.ada_sub <- train(Survived~., data=df, method="adaboost",tuneGrid=expand.grid(.nIter=10L,.method="Adaboost.M1"),  metric=metric, trControl=control, na.action = na.pass)
+```
+
+Output for submmision
+
+```{r}
+new_pred<- predict(fit.ada_sub,test_df,na.action = na.pass)
+res <- cbind(PassengerId=ids,Survived=as.character(new_pred))
+write.csv(res,file="ada_try.csv",row.names = F)
+```
+
+
+Submission on kaggle
+![Subbmission](Titanic/ada.png)
+
+#Thired model - Ensamble
+
+Preprocess data for Ensamble, replacing na with an apropiate value.
+```{r}
+df_f <- df
+levels(df_f$Survived)<-c("x0","x1")
+df_f$Age[is.na(df_f$Age)] <- median(df_f$Age, na.rm = TRUE)
+df_f$Cabin <- as.character(df_f$Cabin)
+df_f$Cabin[is.na(df_f$Cabin)] <- 'x'
+df_f$Embarked[is.na(df_f$Embarked)] <- 'S'
+
+tset_f <- test_df
+tset_f$Age[is.na(tset_f$Age)] <- median(tset_f$Age, na.rm = TRUE)
+tset_f$Fare[is.na(tset_f$Fare)] <- median(tset_f$Fare, na.rm = TRUE)
+tset_f$Cabin <- as.character(tset_f$Cabin)
+tset_f$Cabin[is.na(tset_f$Cabin)] <- 'x'
+tset_f$Embarked[is.na(tset_f$Embarked)] <- 'S'
+```
+
+Create an Ensamble and then stack it.
+
+```{r}
+models <- caretList(
+  Survived ~ .,
+  df_f,
+  allowParallel=TRUE,
+  trControl = 
+  trainControl(
+    method = "cv",
+    number = 10,
+    savePredictions = 'final',
+    classProbs=TRUE,
+    index=createFolds(df_f$Survived, 10)
+  ),
+  metric = metric,
+  tuneList = list(
+        C50 = caretModelSpec(
+      method = "C5.0",
+      tuneGrid = data.frame(
+        .trials = 4,
+        .model = 'tree',
+        .winnow = TRUE
+      )
+    ),
+    xgbTree = caretModelSpec(
+      method = "xgbTree",
+      tuneGrid = data.frame(
+        .nrounds=20,
+        .max_depth=c(4,6),
+        .eta=0.3,
+        .gamma=0.1,
+        .colsample_bytree=0.5,
+        .min_child_weight=0.01,
+        .subsample=0.7
+      )
+    ),
+    rf = caretModelSpec(
+      method = "rf",
+      tuneGrid = data.frame(.mtry=1)
+    ),
+    adaboost = caretModelSpec(
+      method = "adaboost"
+    )
+  )
+)
+
+gbm_ensemble <- caretStack(
+  models,
+  method="gbm",
+  verbose=FALSE,
+  tuneLength=10,
+  metric="ROC",
+  trControl=trainControl(
+    method="boot",
+    number=10,
+    savePredictions="final",
+    classProbs=TRUE,
+    summaryFunction=twoClassSummary
+  )
+)
+
+```
+
+
+Check model results
+```{r}
+res <- resamples(models)
+summary(res)
+modelCor(res)
+splom(res)
+```
+
+
+Output for submmision
+```{r}
+summary(gbm_ensemble)
+new_pred<- predict(gbm_ensemble,newdata=tset_f, type="prob")
+new_pred <- ifelse(new_pred>0.5, 1, 0)
+result <- cbind(PassengerId=ids,Survived=as.character(new_pred))
+write.csv(result,file="Ensamble_try.csv",row.names = F)
+```
+
+
+Submission on kaggle
+![Subbmission](Titanic/ensamble.png)
+
+
+Best result was with the first model - XGB
+
+
+![Subbmission](Titanic/best.png)
