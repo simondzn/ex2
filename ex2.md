@@ -388,4 +388,4 @@ Submission on kaggle ![](./Titanic/ensamble.png)
 
 Best result was with the first model - XGB
 
-![](best.png)
+![](/Titanic/best.png)
