@@ -155,7 +155,7 @@ res <- cbind(PassengerId=ids,Survived=as.character(new_pred))
 write.csv(res,file="xgb_try.csv",row.names = F)
 ```
 
-Submission on kaggle ![Subbmission](Titanic/xgb.png)
+Submission on kaggle ![Subbmission](Titanic/xgb.PNG)
 
 Second - Adaboost
 =================
@@ -199,7 +199,7 @@ res <- cbind(PassengerId=ids,Survived=as.character(new_pred))
 write.csv(res,file="ada_try.csv",row.names = F)
 ```
 
-Submission on kaggle ![Subbmission](Titanic/ada.png)
+Submission on kaggle ![Subbmission](Titanic/ada.PNG)
 
 Thired model - Ensamble
 =======================
@@ -384,8 +384,8 @@ result <- cbind(PassengerId=ids,Survived=as.character(new_pred))
 write.csv(result,file="Ensamble_try.csv",row.names = F)
 ```
 
-Submission on kaggle ![](./Titanic/ensamble.png)
+Submission on kaggle ![](./Titanic/ensamble.PNG)
 
 Best result was with the first model - XGB
 
-![](/Titanic/best.png)
+![](/Titanic/best.PNG)
