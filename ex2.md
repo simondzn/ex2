@@ -384,8 +384,8 @@ result <- cbind(PassengerId=ids,Survived=as.character(new_pred))
 write.csv(result,file="Ensamble_try.csv",row.names = F)
 ```
 
-Submission on kaggle ![Subbmission](./Titanic/ensamble.png)
+Submission on kaggle ![](./Titanic/ensamble.png)
 
 Best result was with the first model - XGB
 
-![Subbmission](best.png)
+![](best.png)
