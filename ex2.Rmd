@@ -1,13 +1,13 @@
 ---
 title: "ex3"
 author: "Simon"
-date: "13 áğåáîáø 2017"
+date: "13 Ã¡Ã°Ã¥Ã¡Ã®Ã¡Ã¸ 2017"
 output: github_document
 ---
 
 Setting up the datasets, seed and needed libs
 ```{r}
-setwd('C:\\Users\\User\\Downloads\\ùéèåú ìğéúåç îéãò\\Titanic')
+setwd('C:\\Users\\User\\Downloads\\Ã¹Ã©Ã¨Ã¥Ãº Ã¬Ã°Ã©ÃºÃ¥Ã§ Ã®Ã©Ã£Ã²\\Titanic')
 set.seed(7)
 df = read.csv('train.csv', ,na.strings = "")
 test_df = read.csv('test.csv', na.strings = '')
@@ -229,4 +229,4 @@ Submission on kaggle
 Best result was with the first model - XGB
 
 
-![Subbmission](Titanic/best.png)
+![Subbmission](./Titanic/best.png)
